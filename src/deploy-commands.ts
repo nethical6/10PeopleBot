@@ -1,10 +1,12 @@
 import { REST, Routes } from 'discord.js';
 import dotenv from 'dotenv';
-import { kickMeComamnd } from './commands/kickme';
-import { voteKickCommand } from './commands/votekick';
+import { CommandHandler } from './commands/command-handler';
+
 dotenv.config();
 
-const commands = [kickMeComamnd.data,voteKickCommand.data];
+const commandHandler = new CommandHandler();
+
+const commands = commandHandler.getCommands().map(command => command.data);
 
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN!);
 

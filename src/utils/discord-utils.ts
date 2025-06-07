@@ -1,3 +1,4 @@
+import { EmbedBuilder, GuildMember, PartialGuildMember } from "discord.js";
 import { Bot } from "../bot";
 
 export const giveUserRole = async (memberId: string, interests: string[], bot: Bot) => {
@@ -47,4 +48,5 @@ export const giveUserRole = async (memberId: string, interests: string[], bot: B
         }
     }
 }
+
 

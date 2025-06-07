@@ -4,11 +4,10 @@ import { Matcher } from "../matching/matcher";
 import { giveUserRole } from "../utils/discord-utils";
 import { voteKickCommand } from "../commands/votekick";
 import { kickMeComamnd } from "../commands/kickme";
+import { CommandHandler } from "../commands/command-handler";
 
-const commands = {
-    'votekickk': voteKickCommand,
-    'kickme' : kickMeComamnd
-};
+const commandHandler = new CommandHandler();
+
 
 /**
  * Handles interactions such as selecting interests and joining groups.
@@ -19,21 +18,27 @@ export const InteractionCreateHandler = async (
   interaction: Interaction,
   bot: Bot
 ) => {
-  if(interaction.isChatInputCommand()){
-    const command = commands[interaction.commandName as keyof typeof commands];
-    if (!command) return;
-    try {
-        await command.execute(interaction);
-    } catch (error) {
-        console.error(error);
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: 'There was an error executing this command!', ephemeral: true });
-        } else {
-            await interaction.reply({ content: 'There was an error executing this command!', ephemeral: true });
+      if (interaction.isChatInputCommand()) {
+        const command = commandHandler.getCommand(interaction.commandName);
+        if (!command) return;
+
+        try {
+            await command.execute(interaction, bot);
+        } catch (error) {
+            console.error(error);
+            const errorMessage = { 
+                content: 'There was an error executing this command!', 
+                ephemeral: true 
+            };
+
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp(errorMessage);
+            } else {
+                await interaction.reply(errorMessage);
+            }
         }
+        return;
     }
-    return
-  }
 
   //handle the interaction for selecting interests
   if (

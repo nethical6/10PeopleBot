@@ -1,4 +1,5 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+import { Bot } from '../bot';
 
 export const voteKickCommand = {
     data: new SlashCommandBuilder()
@@ -9,7 +10,7 @@ export const voteKickCommand = {
                 .setDescription('User to kick out')
                 .setRequired(true)
         ),
-    execute: async (interaction: ChatInputCommandInteraction) => {
+    execute: async (interaction: ChatInputCommandInteraction, bot: Bot) => {
         await interaction.deferReply({ ephemeral: true });
 
         const user = interaction.options.getUser('user');

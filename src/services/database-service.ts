@@ -1,3 +1,5 @@
+import { GuildMember } from "discord.js";
+
 const { createClient } = require("@supabase/supabase-js");
 require("dotenv").config();
 
@@ -165,4 +167,19 @@ export class DatabaseService {
     }
     return data?.map((entry: { user_id: string }) => entry.user_id) || [];
   }
+
+  // Define a minimal type for member if not imported from discord.js
+  async removeMemberFromGroup(member: GuildMember): Promise<string | null> {
+    const groupId = await this.getJoinedGroupId(member.id);
+    if (groupId === null) return null;
+
+    const groupData = await this.getGroupById(groupId);
+    if (!groupData || !Array.isArray(groupData.remaining_members)) return null;
+
+    groupData.remaining_members = groupData.remaining_members.filter((id: string) => id !== member.id);
+    await this.updateGroupMembers(groupId, groupData.remaining_members);
+    await this.upsertToUserProfile(member.id, { joined_group: null });
+    return groupId;
+  }
 }
+
