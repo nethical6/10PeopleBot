@@ -23,7 +23,7 @@ export const InteractionCreateHandler = async (
         if (!command) return;
 
         try {
-            await command.execute(interaction, bot);
+          await command.execute(interaction, bot);
         } catch (error) {
             console.error(error);
             const errorMessage = { 
