@@ -1,14 +1,17 @@
 import { Client, GatewayIntentBits, Guild, Partials } from 'discord.js';
 import dotenv from 'dotenv';
-import { MessageCreateHandler } from './events/message-create';
-import { InteractionCreateHandler } from './events/interaction-create';
+import { MessageCreateHandler } from './events/message';
+import { InteractionCreateHandler } from './events/interaction';
 import { DatabaseService } from './services/database-service';
 import { Matcher } from './matching/matcher';
+import { GuildMemberLeaveHandler } from './events/member-leave';
+import { GuildMemberJoinHandler } from './events/member-join';
 dotenv.config();
 
 export class Bot {
     public client: Client;
     public db: DatabaseService;
+    public guild?: Guild;
     private isMatcherRunning: boolean = false;
     private matcherTimeout?: NodeJS.Timeout;
 
@@ -19,6 +22,7 @@ export class Bot {
                 GatewayIntentBits.Guilds,
                 GatewayIntentBits.GuildMessages,
                 GatewayIntentBits.MessageContent,
+                GatewayIntentBits.GuildMembers,
                 GatewayIntentBits.GuildMembers
             ],
             partials: [Partials.Channel]
@@ -29,14 +33,16 @@ export class Bot {
     }
     
     setupEventHandlers() {
-        this.client.once('ready', () => {
+        this.client.once('ready', async () => {
             console.log(`Logged in as ${this.client.user?.tag}`);
             this.runMatcher();
+            this.guild = await this.client.guilds.fetch(process.env.GUILD_ID as string);
 
         });
         this.client.on('messageCreate', (msg) => MessageCreateHandler(msg, this));
         this.client.on('interactionCreate', (i) => InteractionCreateHandler(i, this));
-        // this.client.on('guildMemberRemove', (member) => guildMemberRemoveHandler(member, this));
+        this.client.on('guildMemberRemove', (member) => GuildMemberLeaveHandler(this, member));
+        this.client.on('guildMemberAdd', (member) => { GuildMemberJoinHandler(this, member); });
         // this.client.on('channelDelete', (channel) => channelDeleteHandler(channel, this));
     }
 
