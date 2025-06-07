@@ -2,6 +2,14 @@ import { Interaction, MessageFlags } from "discord.js";
 import { Bot } from "../bot";
 import { Matcher } from "../matching/matcher";
 import { giveUserRole } from "../utils/discord-utils";
+import { voteKickCommand } from "../commands/votekick";
+import { kickMeComamnd } from "../commands/kickme";
+
+const commands = {
+    'votekickk': voteKickCommand,
+    'kickme' : kickMeComamnd
+};
+
 /**
  * Handles interactions such as selecting interests and joining groups.
  * @param interaction - The interaction object from Discord.
@@ -11,9 +19,22 @@ export const InteractionCreateHandler = async (
   interaction: Interaction,
   bot: Bot
 ) => {
-  console.log(
-    `Interaction received: ${interaction.id} from user ${interaction.user.id} ${interaction.type}`
-  );
+  if(interaction.isChatInputCommand()){
+    const command = commands[interaction.commandName as keyof typeof commands];
+    if (!command) return;
+    try {
+        await command.execute(interaction);
+    } catch (error) {
+        console.error(error);
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({ content: 'There was an error executing this command!', ephemeral: true });
+        } else {
+            await interaction.reply({ content: 'There was an error executing this command!', ephemeral: true });
+        }
+    }
+    return
+  }
+
   //handle the interaction for selecting interests
   if (
     interaction.isStringSelectMenu() &&

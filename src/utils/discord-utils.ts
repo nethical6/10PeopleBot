@@ -47,3 +47,4 @@ export const giveUserRole = async (memberId: string, interests: string[], bot: B
         }
     }
 }
+
