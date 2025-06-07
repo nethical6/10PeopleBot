@@ -1,15 +1,25 @@
 import { Interaction, MessageFlags } from "discord.js";
 import { Bot } from "../bot";
+import { Matcher } from "../matching/matcher";
+/**
+ * Handles interactions such as selecting interests and joining groups.
+ * @param interaction - The interaction object from Discord.
+ * @param bot - The instance of the Bot class.
+ */
 export const InteractionCreateHandler = async (
   interaction: Interaction,
   bot: Bot
 ) => {
-    //handle the interaction for selecting interests
-    if (
+  console.log(
+    `Interaction received: ${interaction.id} from user ${interaction.user.id} ${interaction.type}`
+  );
+  //handle the interaction for selecting interests
+  if (
     interaction.isStringSelectMenu() &&
     interaction.customId === "interest_menu"
   ) {
-    bot.db.saveUserInterests(interaction.user.id, interaction.values);
+    await interaction.deferReply({ ephemeral: true });
+    await bot.db.saveUserInterests(interaction.user.id, interaction.values);
     const guild = interaction.guild;
     if (guild) {
       for (const interest of interaction.values) {
@@ -39,43 +49,45 @@ export const InteractionCreateHandler = async (
             await member.roles.add(role);
           }
           const rolesToRemove = member.roles.cache.filter(
-            (r) => r.name !== role.name && interaction.values.includes(r.name)
+            (r) =>
+              r.id !== guild.id && // Exclude @everyone
+              r.name !== role.name &&
+              !interaction.values.includes(r.name)
           );
-            if (rolesToRemove.size > 0) {
-                await member.roles.remove(rolesToRemove);
-            }
+          if (rolesToRemove.size > 0) {
+            await member.roles.remove(rolesToRemove);
+          }
+          await interaction.editReply({
+            content: `✅ Your interests have been saved! You can now find a group.`,
+          });
         } catch (err) {
           console.error(
             `Failed to add role ${role.name} to user ${interaction.user.id}:`,
             err
           );
+
+          await interaction.editReply({
+            content: `An Error occurred while selecting interests. Please try again later.`,
+          });
         }
       }
     }
-
-    return interaction.reply({
-      content: `✅ Your interests are set to: **${interaction.values.join(
-        ", "
-      )}**. \nNow press the "Find a Group" Button to start search!`,
-      flags: MessageFlags.Ephemeral,
-    });
   }
 
   // Handle the button interaction for joining a group
   if (interaction.isButton() && interaction.customId === "join_button") {
+    await interaction.deferReply({ ephemeral: true });
     const selected = await bot.db.getUserInterests(interaction.user.id);
     if (selected === null || selected.length === 0) {
-      return interaction.reply({
+      return interaction.editReply({
         content: "❌ Please select your interests from the menu first!",
-        flags: MessageFlags.Ephemeral,
       });
     }
 
-    bot.db.addToWaitingPool(interaction.user.id);
+    await bot.db.addToWaitingPool(interaction.user.id);
 
-    return interaction.reply({
+    return interaction.editReply({
       content: `🔥 You're in the waiting pool! We'll find a group for you shortly.`,
-      flags: MessageFlags.Ephemeral,
     });
   }
 };

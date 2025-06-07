@@ -21,7 +21,7 @@ export class DatabaseService {
                 updated_at: new Date().toISOString()
             });
 
-        if (error) console.error('Error saving user interests:', error);
+        if (error) console.error(`Error saving user interests for ${userId}:`, error);
         return !error;
     }
 
@@ -33,7 +33,7 @@ export class DatabaseService {
             .single();
 
         if (error) {
-            console.error('Error getting user interests:', error);
+            console.error(`Error getting user interests for ${userId}:`, error);
             return null;
         }
         return data?.interests ?? null;
@@ -46,7 +46,8 @@ export class DatabaseService {
             .insert({
                 group_id: groupId,
                 members: members,
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
+                is_full: false
             });
 
         if (error) console.error('Error creating group:', error);
@@ -58,7 +59,8 @@ export class DatabaseService {
             .from('groups')
             .update({ 
                 members: members,
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
+                is_full: members.length >= 10 
             })
             .eq('group_id', groupId);
 
@@ -66,11 +68,12 @@ export class DatabaseService {
         return !error;
     }
 
+    // Get all groups which require matching
     async getActiveGroups(): Promise<any[]> {
         const { data, error } = await this.supabase
             .from('groups')
             .select('*')
-            .eq('is_active', true);
+            .eq('is_full', false);
 
         if (error) {
             console.error('Error getting active groups:', error);
@@ -93,7 +96,7 @@ export class DatabaseService {
     async addToWaitingPool(userId: string): Promise<boolean> {
         const { error } = await this.supabase
             .from('waiting_pool')
-            .insert({
+            .upsert({
                 user_id: userId,
                 joined_at: new Date().toISOString()
             });
@@ -101,6 +104,7 @@ export class DatabaseService {
         if (error) console.error('Error adding to waiting pool:', error);
         return !error;
     }
+    
 
     async removeFromWaitingPool(userId: string): Promise<boolean> {
         const { error } = await this.supabase
