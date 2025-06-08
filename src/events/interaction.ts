@@ -33,8 +33,6 @@ export const InteractionCreateHandler = async (
 
             if (interaction.replied || interaction.deferred) {
                 await interaction.followUp(errorMessage);
-            } else {
-                await interaction.reply(errorMessage);
             }
         }
         return;

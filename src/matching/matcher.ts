@@ -17,11 +17,14 @@ export const Matcher = async (bot: Bot) => {
 
   // Match waiters with existing groups based on interests
   const groups = await bot.db.getActiveGroups();
-  let existingGroups: { id: string; members: string[] }[] = [];
+  let existingGroups: { id: string; members: string[], isFull:boolean }[] = [];
   for (const group of groups) {
+    const members = await bot.db.getAllGroupMembers(group.group_id)
+    if(members===null) continue
     existingGroups.push({
       id: group.group_id,
-      members: group.members,
+      members: members,
+      isFull: false
     });
   }
   let matchedUserIds: string[] = [];
@@ -47,15 +50,15 @@ export const Matcher = async (bot: Bot) => {
       );
       if (averageGroupMatch >= 0.3) {
         matchedUserIds.push(waiter);
-        group.members.push(waiter);
-        await bot.db.updateGroupMembers(group.id, group.members);
-        await AddToGroup(bot, group.id, waiter, averageGroupMatch * 100);
+        await bot.db.addUserToGroup(group.id,waiter)
+        await addToDiscordGroup(bot, group.id, waiter, averageGroupMatch * 100);
         await bot.db.removeFromWaitingPool(waiter);
+        group.members.push(waiter)
         existingGroups.push({
           id: group.id,
           members: group.members,
+          isFull: group.members.length>=10
         });
-        await bot.db.upsertToUserProfile(waiter,{joined_group: group.id});
         break; // Exit inner loop once matched
       }
     }
@@ -100,11 +103,11 @@ export const Matcher = async (bot: Bot) => {
         existingGroups.push({
           id: channelId,
           members: [waiter, otherWaiter],
+          isFull: false
         });
         await bot.db.createGroup(channelId, members);
         for (const cleanupWaiter of [waiter, otherWaiter]) {
           await bot.db.removeFromWaitingPool(cleanupWaiter);
-          await bot.db.upsertToUserProfile(cleanupWaiter, {joined_group: channelId});
         }
         await bot.db.removeFromWaitingPool(otherWaiter);
         console.log(
@@ -179,7 +182,7 @@ const createGroup = async (
     return null;
   }
 };
-const AddToGroup = async (
+const addToDiscordGroup = async (
   bot: Bot,
   groupId: string,
   userId: string,

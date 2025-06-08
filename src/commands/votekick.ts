@@ -1,5 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, ChatInputCommandInteraction, ComponentType, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { Bot } from '../bot';
+import { group } from 'console';
 
 export const voteKickCommand = {
     data: new SlashCommandBuilder()
@@ -21,14 +22,18 @@ export const voteKickCommand = {
             await interaction.reply({ content: 'User not found.', ephemeral: true });
             return;
         }
-        const groupData = await bot.db.getGroupById(interaction.channelId)
+        if(!await bot.db.checkIfUserIsFromGroup(interaction.channelId,target.id)){
+            await interaction.reply({ content: 'User not found in group.', ephemeral: true });
+            return;
+        }
 
-        if (!groupData || !Array.isArray(groupData.members)) {
+        const allMembers = await bot.db.getAllGroupMembers(interaction.channelId)
+        if (!Array.isArray(allMembers)) {
             await interaction.reply({ content: 'Failed to create vote kick', ephemeral: true });
             return;
         }
 
-        const totalMembers = groupData.members.length -1 ;
+        const totalMembers = allMembers.length -1 ;
         const votesNeeded = Math.ceil(totalMembers * 0.8);
         const voteEmbed = new EmbedBuilder()
             .setTitle('🗳️ Vote Kick')
@@ -38,7 +43,7 @@ export const voteKickCommand = {
                 { name: 'Votes needed', value: `${votesNeeded}` },
                 { name: 'Time remaining', value: '30 seconds' }
             )
-            .setFooter({ text: `Voters: 1` })
+            .setFooter({ text: `Voters: 0` })
             .setTimestamp();
 
         // Create buttons
@@ -67,12 +72,11 @@ export const voteKickCommand = {
         });
     
 
-        const votes = new Set([interaction.user.id]); // Initiator automatically votes yes
+        const votes = new Set();
 
         collector.on('collect', async i => {
             // Prevent target from voting
             if (i.user.id === target.id) {
-                await i.reply({ content: 'You cannot vote in your own kick vote!', ephemeral: true });
                 return;
             }
 
@@ -121,11 +125,7 @@ export const voteKickCommand = {
                             .setFooter({ text: `Final votes: ${votes.size}` })
                             .setColor("#FF5555") 
                             .setTimestamp();
-                         await interaction.channel.permissionOverwrites.edit(interaction.user, {
-                            ViewChannel: false,
-                            SendMessages: false,
-                        });
-
+                        
                         await response.resource?.message?.edit({ 
                             embeds: [kickEmbed],
                             components: [disabledRow]
@@ -133,13 +133,17 @@ export const voteKickCommand = {
                         await member.send({embeds: [kickEmbed]});
                         
                         await bot.db.removeMemberFromGroup(member)
+                         await interaction.channel.permissionOverwrites.edit(member.id, {
+                            ViewChannel: false,
+                            SendMessages: false,
+                        });
                     }
                 } catch (error) {
                     console.error('Failed to kick member:', error);
                 }
             }else{
                 const fail = EmbedBuilder.from(voteEmbed)
-                    .setTitle(`🗳️ Not enough votes to kick ${target.toJSON()}`)
+                    .setTitle(`🗳️ Not enough votes to kick ${target.toString()}`)
                     .setFooter({ text: `Final votes: ${votes.size}` })
                     .setColor("#FF5555") 
                     .setTimestamp();

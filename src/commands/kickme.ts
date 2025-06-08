@@ -9,14 +9,15 @@ export const kickMeComamnd = {
         if(!interaction.channel) return
         await interaction.deferReply({ ephemeral: false });
 
+        await interaction.editReply(`User ${interaction.user.tag} has left this group.`);
+        await bot.db.removeMemberFromGroup(interaction.member as GuildMember)
+        // Implement your votekick logic here
+        
         if (interaction.channel.type === ChannelType.GuildText) {
             await interaction.channel.permissionOverwrites.edit(interaction.user, {
               ViewChannel: false,
               SendMessages: false,
             });
         }
-        await bot.db.removeMemberFromGroup(interaction.member as GuildMember)
-        // Implement your votekick logic here
-        await interaction.editReply(`User ${interaction.user.tag} has left this group.`);
     }
 };

@@ -1,10 +1,16 @@
 import { GuildMember } from "discord.js";
-
-const { createClient } = require("@supabase/supabase-js");
+import { SupabaseClient, createClient } from "@supabase/supabase-js";
+import {
+  Database,
+  Tables,
+  TablesInsert,
+  TablesUpdate,
+  Json,
+} from "../types/supabase";
 require("dotenv").config();
 
 export class DatabaseService {
-  private supabase: ReturnType<typeof createClient>;
+  private supabase: SupabaseClient<Database>;
 
   constructor() {
     this.supabase = createClient(
@@ -13,16 +19,15 @@ export class DatabaseService {
     );
   }
 
-  // User Interests Management
   async saveUserInterests(
     userId: string,
     interests: string[]
   ): Promise<boolean> {
-    const { error } = await this.supabase.from("user_interests").upsert({
+
+    const { error } = await this.supabase.from("user").upsert({
       user_id: userId,
-      interests: interests,
-      updated_at: new Date().toISOString(),
-    });
+      interests: interests as Json,
+    } satisfies TablesInsert<"user">);
 
     if (error)
       console.error(`Error saving user interests for ${userId}:`, error);
@@ -31,7 +36,7 @@ export class DatabaseService {
 
   async getUserInterests(userId: string): Promise<string[] | null> {
     const { data, error } = await this.supabase
-      .from("user_interests")
+      .from("user")
       .select("interests")
       .eq("user_id", userId)
       .single();
@@ -40,64 +45,94 @@ export class DatabaseService {
       console.error(`Error getting user interests for ${userId}:`, error);
       return null;
     }
-    return data?.interests ?? null;
+    return (data?.interests as string[]) ?? null;
   }
 
-  // Group Management
+  async addUserToGroup(userId:string,group:string): Promise<Boolean>{
+    const result = await this.updateUserProfile(userId,{
+      joined_group:group
+    })
+    await this.checkAndSetGroupFull(group)
+    return result;
+  }
+
   async createGroup(groupId: string, members: string[]): Promise<boolean> {
     const { error } = await this.supabase.from("groups").insert({
       group_id: groupId,
-      members: members,
       created_at: new Date().toISOString(),
       is_full: false,
-    });
+    } satisfies TablesInsert<"groups">);
 
+    for (const member of members){
+      await this.updateUserProfile(member,{joined_group:groupId})
+    }
     if (error) console.error("Error creating group:", error);
     return !error;
   }
 
-  async updateGroupMembers(
+  async getAllGroupMembers(group_id: string): Promise<string[] | null> {
+    const { data: users, error: membersError } = await this.supabase
+      .from("user")
+      .select("user_id")
+      .eq("joined_group", group_id);
+
+    if (membersError) {
+      console.error(`Error getting members for group ${group_id}:`, membersError);
+      return null;
+    }
+    return users?.map((user: { user_id: string }) => user.user_id) ?? [];
+  }
+
+  async setGroupFull(
     groupId: string,
-    members: string[]
+    is_full:boolean
   ): Promise<boolean> {
     const { error } = await this.supabase
       .from("groups")
       .update({
-        members: members,
-        updated_at: new Date().toISOString(),
-        is_full: members.length >= 10,
-      })
+        is_full: is_full,
+      } satisfies TablesUpdate<"groups">)
       .eq("group_id", groupId);
+
 
     if (error) console.error("Error updating group members:", error);
     return !error;
   }
+  async checkAndSetGroupFull(group_id:string): Promise<void>{
+    const members = await this.getAllGroupMembers(group_id)
+    if(members===null) return 
+    await this.setGroupFull(group_id,members?.length>=10)
+  }
 
-  async upsertToUserProfile(userId: string,data:any ): Promise<boolean> {
+  async updateUserProfile(
+    userId: string,
+    data: Partial<TablesUpdate<"user">>
+  ): Promise<boolean> {
     const { error } = await this.supabase
-      .from("user_interests")
+      .from("user")
       .update(data)
       .eq("user_id", userId);
 
-    if (error) console.error("Error updating joined group info:", error);
+    if (error) console.error(`Error updating user ${userId}'s info: `, error);
     return !error;
   }
+
   async getJoinedGroupId(userId: string): Promise<string | null> {
     const { data, error } = await this.supabase
-      .from("user_interests")
-      .select("interests")
+      .from("user")
+      .select("joined_group")
       .eq("user_id", userId)
       .single();
 
     if (error) {
-      console.error(`Error getting user interests for ${userId}:`, error);
+      console.error(`Error getting joined group for ${userId}:`, error);
       return null;
     }
     return data?.joined_group ?? null;
   }
 
   // Get all groups which require matching
-  async getActiveGroups(): Promise<any[]> {
+  async getActiveGroups(): Promise<Tables<"groups">[]> {
     const { data, error } = await this.supabase
       .from("groups")
       .select("*")
@@ -110,11 +145,15 @@ export class DatabaseService {
     return data || [];
   }
 
-  // get a specific group by ID
-  async getGroupById(groupId: string): Promise<any | null> {
+  /**
+   * Retrieves a specific group by its ID
+   * @param groupId The ID of the group to retrieve
+   * @returns Promise<Tables<'groups'> | null> The group data or null if not found
+   */
+  async getGroupById(groupId: string): Promise<Tables<"groups"> | null> {
     const { data, error } = await this.supabase
       .from("groups")
-      .select("*")
+      .select()
       .eq("group_id", groupId)
       .single();
     if (error) {
@@ -122,7 +161,7 @@ export class DatabaseService {
       return null;
     }
     return data || null;
-  } 
+  }
 
   async deleteGroup(groupId: string): Promise<boolean> {
     const { error } = await this.supabase
@@ -139,7 +178,7 @@ export class DatabaseService {
     const { error } = await this.supabase.from("waiting_pool").upsert({
       user_id: userId,
       joined_at: new Date().toISOString(),
-    });
+    } satisfies TablesInsert<"waiting_pool">);
 
     if (error) console.error("Error adding to waiting pool:", error);
     return !error;
@@ -158,28 +197,54 @@ export class DatabaseService {
   async getWaitingPool(): Promise<string[]> {
     const { data, error } = await this.supabase
       .from("waiting_pool")
-      .select("user_id")
+      .select()
       .order("joined_at", { ascending: true });
 
     if (error) {
       console.error("Error getting waiting pool:", error);
       return [];
     }
-    return data?.map((entry: { user_id: string }) => entry.user_id) || [];
+    return data?.map((entry: Tables<"waiting_pool">) => entry.user_id) || [];
   }
 
-  // Define a minimal type for member if not imported from discord.js
+  async getKickedGroups(user_id: string): Promise<string[]> {
+    const { data, error } = await this.supabase
+      .from("user")
+      .select("kicked_groups")
+      .eq("user_id", user_id)
+      .single();
+
+    if (error) {
+      console.error(`Error getting kicked groups for user ${user_id}:`, error);
+      return [];
+    }
+    return (data?.kicked_groups as string[]) ?? [];
+  }
+
   async removeMemberFromGroup(member: GuildMember): Promise<string | null> {
     const groupId = await this.getJoinedGroupId(member.id);
     if (groupId === null) return null;
+    
+    const kickedGroups = await this.getKickedGroups(member.id)
+    kickedGroups.push(groupId)
+    await this.updateUserProfile(member.id, { joined_group: null,kicked_groups:kickedGroups });
 
-    const groupData = await this.getGroupById(groupId);
-    if (!groupData || !Array.isArray(groupData.remaining_members)) return null;
-
-    groupData.remaining_members = groupData.remaining_members.filter((id: string) => id !== member.id);
-    await this.updateGroupMembers(groupId, groupData.remaining_members);
-    await this.upsertToUserProfile(member.id, { joined_group: null });
+    await this.setGroupFull(groupId, false);
     return groupId;
   }
-}
 
+  async checkIfUserIsFromGroup(group: string, user_id: string): Promise<boolean> {
+    const { data, error } = await this.supabase
+      .from("user")
+      .select("user_id")
+      .eq("user_id", user_id)
+      .eq("joined_group", group)
+      .single();
+
+    if (error) {
+      console.error(`Error checking if user ${user_id} is from group ${group}:`, error);
+      return false;
+    }
+    return !!data;
+  }
+}
