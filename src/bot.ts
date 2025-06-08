@@ -1,71 +1,59 @@
-import { Client, GatewayIntentBits, Guild, Partials } from 'discord.js';
-import dotenv from 'dotenv';
-import { MessageCreateHandler } from './events/message';
-import { InteractionCreateHandler } from './events/interaction';
-import { DatabaseService } from './services/database-service';
-import { Matcher } from './matching/matcher';
-import { GuildMemberLeaveHandler } from './events/member-leave';
-import { GuildMemberJoinHandler } from './events/member-join';
+import { Client, GatewayIntentBits, Guild, Partials } from "discord.js";
+import dotenv from "dotenv";
+import { MessageCreateHandler } from "./events/message";
+import { InteractionCreateHandler } from "./events/interaction";
+import { DatabaseService } from "./services/database-service";
+import { BackgroundService } from "./services/background-service";
+import { Matcher } from "./matching/matcher";
+import { GuildMemberLeaveHandler } from "./events/member-leave";
+import { GuildMemberJoinHandler } from "./events/member-join";
 dotenv.config();
 
 export class Bot {
-    public client: Client;
-    public db: DatabaseService;
-    public guild?: Guild;
-    private isMatcherRunning: boolean = false;
-    private matcherTimeout?: NodeJS.Timeout;
+  public client: Client;
+  public db: DatabaseService;
+  public guild?: Guild;
+  private backgroundService: BackgroundService;
 
+  constructor() {
+    this.client = new Client({
+      intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMembers,
+      ],
+      partials: [Partials.Channel],
+    });
 
-    constructor() {
-        this.client = new Client({
-            intents: [
-                GatewayIntentBits.Guilds,
-                GatewayIntentBits.GuildMessages,
-                GatewayIntentBits.MessageContent,
-                GatewayIntentBits.GuildMembers,
-                GatewayIntentBits.GuildMembers
-            ],
-            partials: [Partials.Channel]
-        });
+    this.setupEventHandlers();
+    this.db = new DatabaseService();
+    this.backgroundService = new BackgroundService(this);
+  }
 
-        this.setupEventHandlers();
-        this.db = new DatabaseService();
-    }
-    
-    setupEventHandlers() {
-        this.client.once('ready', async () => {
-            console.log(`Logged in as ${this.client.user?.tag}`);
-            this.runMatcher();
-            this.guild = await this.client.guilds.fetch(process.env.GUILD_ID as string);
+  setupEventHandlers() {
+    this.client.once("ready", async () => {
+      console.log(`Logged in as ${this.client.user?.tag}`);
+      this.backgroundService.startServices();
+      this.guild = await this.client.guilds.fetch(
+        process.env.GUILD_ID as string
+      );
+    });
+    this.client.on("messageCreate", (msg) => MessageCreateHandler(msg, this));
+    this.client.on("interactionCreate", (i) =>
+      InteractionCreateHandler(i, this)
+    );
+    this.client.on("guildMemberRemove", (member) =>
+      GuildMemberLeaveHandler(this, member)
+    );
+    this.client.on("guildMemberAdd", (member) => {
+      GuildMemberJoinHandler(this, member);
+    });
+    // this.client.on('channelDelete', (channel) => channelDeleteHandler(channel, this));
+  }
 
-        });
-        this.client.on('messageCreate', (msg) => MessageCreateHandler(msg, this));
-        this.client.on('interactionCreate', (i) => InteractionCreateHandler(i, this));
-        this.client.on('guildMemberRemove', (member) => GuildMemberLeaveHandler(this, member));
-        this.client.on('guildMemberAdd', (member) => { GuildMemberJoinHandler(this, member); });
-        // this.client.on('channelDelete', (channel) => channelDeleteHandler(channel, this));
-    }
-
-    private async runMatcher() {
-        if (this.isMatcherRunning) {
-            return;
-        }
-
-        try {
-            this.isMatcherRunning = true;
-            await Matcher(this);
-        } catch (error) {
-            console.error("Matcher error:", error);
-        } finally {
-            this.isMatcherRunning = false;
-            // Schedule next run after current one finishes
-            this.matcherTimeout = setTimeout(() => this.runMatcher(), 5000);
-        }
-    }
-    
-    cleanup() {
-        if (this.matcherTimeout) {
-            clearTimeout(this.matcherTimeout);
-        }
-    }
+  cleanup() {
+    this.backgroundService.cleanup();
+  }
 }

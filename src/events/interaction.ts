@@ -26,14 +26,6 @@ export const InteractionCreateHandler = async (
           await command.execute(interaction, bot);
         } catch (error) {
             console.error(error);
-            const errorMessage = { 
-                content: 'There was an error executing this command!', 
-                ephemeral: true 
-            };
-
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp(errorMessage);
-            }
         }
         return;
     }

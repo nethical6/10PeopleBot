@@ -1,6 +1,5 @@
 import { EmbedBuilder, GuildMember, PartialGuildMember } from "discord.js";
 import { Bot } from "../bot";
-import { GUILD_ID } from "../constants";
 
 export const GuildMemberLeaveHandler = async (bot: Bot,member: GuildMember | PartialGuildMember) => {
     const guild = bot.guild;
