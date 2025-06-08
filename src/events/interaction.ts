@@ -54,6 +54,17 @@ export const InteractionCreateHandler = async (
   // Handle the button interaction for joining a group
   if (interaction.isButton() && interaction.customId === "join_button") {
     await interaction.deferReply({ ephemeral: true });
+    const id = await bot.db.getUsersGroupId(interaction.user.id)
+    if(id!=null){
+      const embed = {
+        title: "Already in a Group",
+        description: "❌ You can only join one group at a time.\nUse the `/kickme` command in your current group to exit it.",
+        color: 0xFF5555
+      };
+      return interaction.editReply({
+        embeds: [embed]
+      });
+    }
     const selected = await bot.db.getUserInterests(interaction.user.id);
     if (selected === null || selected.length === 0) {
       return interaction.editReply({

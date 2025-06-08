@@ -4,7 +4,7 @@ import { group } from 'console';
 
 export const voteKickCommand = {
     data: new SlashCommandBuilder()
-        .setName('votekickk')
+        .setName('votekick')
         .setDescription('Kick out a user from channel via vote')
         .addUserOption(option => 
             option.setName('user')

@@ -207,7 +207,7 @@ export class DatabaseService {
     return data?.map((entry: Tables<"waiting_pool">) => entry.user_id) || [];
   }
 
-  async getKickedGroups(user_id: string): Promise<string[]> {
+  async getBannedGroups(user_id: string): Promise<string[]> {
     const { data, error } = await this.supabase
       .from("user")
       .select("kicked_groups")
@@ -225,12 +225,25 @@ export class DatabaseService {
     const groupId = await this.getJoinedGroupId(member.id);
     if (groupId === null) return null;
     
-    const kickedGroups = await this.getKickedGroups(member.id)
+    const kickedGroups = await this.getBannedGroups(member.id)
     kickedGroups.push(groupId)
     await this.updateUserProfile(member.id, { joined_group: null,kicked_groups:kickedGroups });
 
     await this.setGroupFull(groupId, false);
     return groupId;
+  }
+  async getUsersGroupId(user_id: string): Promise<string | null> {
+    const { data, error } = await this.supabase
+      .from("user")
+      .select("joined_group")
+      .eq("user_id", user_id)
+      .single();
+
+    if (error) {
+      console.error(`Error getting group id for user ${user_id}:`, error);
+      return null;
+    }
+    return data?.joined_group ?? null;
   }
 
   async checkIfUserIsFromGroup(group: string, user_id: string): Promise<boolean> {

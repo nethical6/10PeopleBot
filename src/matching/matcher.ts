@@ -3,8 +3,6 @@ import { jaccard } from "../utils/jaccard";
 import {
   ChannelType,
   EmbedBuilder,
-  PermissionOverwriteManager,
-  PermissionOverwrites,
   PermissionsBitField,
 } from "discord.js";
 
@@ -30,12 +28,12 @@ export const Matcher = async (bot: Bot) => {
   let matchedUserIds: string[] = [];
   for (const waiter of allWaiters) {
     if (matchedUserIds.includes(waiter)) continue; // Skip if already matched
+    const bannedGroups = await bot.db.getBannedGroups(waiter)
 
     const waiterInterests = await bot.db.getUserInterests(waiter);
     for (const group of existingGroups) {
-      if (matchedUserIds.includes(waiter)) break; // Skip if already matched
+      if (matchedUserIds.includes(waiter) || bannedGroups.includes(group.id)) break; 
       let averageGroupMatch = 0;
-
       for (const member of group.members) {
         const memberInterest = await bot.db.getUserInterests(member);
         const match = jaccard(
