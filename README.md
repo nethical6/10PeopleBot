@@ -53,21 +53,23 @@ src/
 ```
 
 ## Setup
-
 1. Clone the repository
 2. Install dependencies:
-   ```bash
-   npm install
-   ```
+  ```bash
+  npm install
+  ```
 3. Configure environment variables (create a `.env` file)
-4. Deploy slash commands:
-   ```bash
-   npm run deploy
-   ```
-5. Start the bot:
-   ```bash
-   npm start
-   ```
+4. Set up the database schema on Supabase:
+  - Open your Supabase project dashboard.
+  - Go to the SQL editor and run the schema file located at `schema.sql` in the project root to create the required tables.
+5. Deploy slash commands:
+  ```bash
+  npm run deploy
+  ```
+6. Start the bot:
+  ```bash
+  npm start
+  ```
 
 ## Environment Variables
 
