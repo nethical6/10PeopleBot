@@ -38,8 +38,13 @@ export const InteractionCreateHandler = async (
     await interaction.deferReply({ ephemeral: true });
     await bot.db.saveUserInterests(interaction.user.id, interaction.values);
     giveUserRole(interaction.user.id, interaction.values, bot);
+      const embed = {
+        title: "Interests Saved",
+        description: "✅ Your interests have been saved! You can now find a group by pressing the **Find Group** button.\nMake sure to set your presence to \"online\" or \"idle\" to find groups quicker.",
+        color: 0x57F287 
+      };
       await interaction.editReply({
-            content: `✅ Your interests have been saved! You can now find a group.`,
+        embeds: [embed],
       });
   }
 
@@ -67,7 +72,7 @@ export const InteractionCreateHandler = async (
     await bot.db.addToWaitingPool(interaction.user.id);
 
     return interaction.editReply({
-      content: `🔥 You're in the waiting pool! We'll find a group for you shortly.`,
+      content: `🔥 You're in the waiting pool! We'll find a group for you shortly. You can chat in #general until then!`,
     });
   }
 };

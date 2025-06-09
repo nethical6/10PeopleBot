@@ -1,5 +1,6 @@
-import { EmbedBuilder, GuildMember, PartialGuildMember } from "discord.js";
+import { EmbedBuilder, GuildMember, PartialGuildMember, PresenceUpdateStatus } from "discord.js";
 import { Bot } from "../bot";
+import { INTEREST_OPTIONS } from "../constants";
 
 export const giveUserRole = async (memberId: string, interests: string[], bot: Bot) => {
     const guild = bot.guild;
@@ -34,11 +35,13 @@ export const giveUserRole = async (memberId: string, interests: string[], bot: B
             if (!member.roles.cache.has(role.id)) {
                 await member.roles.add(role);
             }
-            //remove roles that are not in the interests
+            // remove roles that are not in the interests or not in the predefined interests list
             const rolesToRemove = member.roles.cache.filter(
-                (r) => r.id !== guild.id && // Exclude @everyone
-                r.name !== role.name && // Exclude the current role
-                !interests.includes(r.name) // Exclude roles that are not in the interests
+                (r) =>
+                    r.id !== guild.id && // Exclude @everyone
+                    r.name !== role.name && // Exclude the current role
+                    !interests.includes(r.name) && // Exclude roles that are not in the interests
+                    !INTEREST_OPTIONS.some(option => option.value === r.name) // Exclude roles not in predefined interests
             );
             if (rolesToRemove.size > 0) {
                 await member.roles.remove(rolesToRemove);
@@ -50,3 +53,9 @@ export const giveUserRole = async (memberId: string, interests: string[], bot: B
 }
 
 
+export const isUserOnline = async (bot: Bot, user: string): Promise<boolean> => {
+
+    const waitingMember = await bot.guild?.members.fetch(user).catch(() => null);
+
+    return !!(waitingMember && waitingMember.presence && waitingMember.presence.status !== PresenceUpdateStatus.Offline);
+}

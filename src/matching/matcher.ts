@@ -1,4 +1,5 @@
 import { Bot } from "../bot";
+import { isUserOnline } from "../utils/discord-utils";
 import { jaccard } from "../utils/jaccard";
 import {
   ChannelType,
@@ -8,10 +9,18 @@ import {
 
 export const Matcher = async (bot: Bot) => {
   const allWaiters = await bot.db.getWaitingPool();
-  console.log(`Found ${allWaiters.length} users in waiting pool`);
+  const waitingPool = allWaiters.length
   if (allWaiters === null) {
     return;
   }
+
+  // Filter out offline users from allWaiters in-place
+  for (let i = allWaiters.length - 1; i >= 0; i--) {
+    if (!(await isUserOnline(bot, allWaiters[i]))) {
+      allWaiters.splice(i, 1);
+    }
+  }
+  console.log(`Found ${waitingPool} users in waiting pool (${allWaiters.length} online)`)
 
   // Match waiters with existing groups based on interests
   const groups = await bot.db.getActiveGroups();
@@ -25,16 +34,23 @@ export const Matcher = async (bot: Bot) => {
       isFull: false
     });
   }
+
+
   let matchedUserIds: string[] = [];
   for (const waiter of allWaiters) {
     if (matchedUserIds.includes(waiter)) continue; // Skip if already matched
-    const bannedGroups = await bot.db.getBannedGroups(waiter)
+    const userBannedOnGroups = await bot.db.getBannedGroups(waiter)
 
     const waiterInterests = await bot.db.getUserInterests(waiter);
+
+    let possibleGroupMatches:{id: string,matchRate:number,onlineMembers:number,members: string[]}[] = []
     for (const group of existingGroups) {
-      if (matchedUserIds.includes(waiter) || bannedGroups.includes(group.id)) break; 
+      if (matchedUserIds.includes(waiter) || userBannedOnGroups.includes(group.id)) break; 
       let averageGroupMatch = 0;
+      let onlineMembers = 0
+
       for (const member of group.members) {
+        if(await isUserOnline(bot,member)) onlineMembers++
         const memberInterest = await bot.db.getUserInterests(member);
         const match = jaccard(
           new Set(waiterInterests),
@@ -47,18 +63,30 @@ export const Matcher = async (bot: Bot) => {
         `Average match for group ${group.id} with waiter ${waiter}: ${averageGroupMatch}`
       );
       if (averageGroupMatch >= 0.3) {
-        matchedUserIds.push(waiter);
-        await bot.db.addUserToGroup(group.id,waiter)
-        await addToDiscordGroup(bot, group.id, waiter, averageGroupMatch * 100);
-        await bot.db.removeFromWaitingPool(waiter);
-        group.members.push(waiter)
-        existingGroups.push({
-          id: group.id,
-          members: group.members,
-          isFull: group.members.length>=10
-        });
-        break; // Exit inner loop once matched
+        possibleGroupMatches.push({id: group.id, matchRate: averageGroupMatch, onlineMembers,members: group.members})
       }
+    }
+    if (possibleGroupMatches.length > 0) {
+      // Sort by onlineMembers (desc), then by matchRate (desc)
+      possibleGroupMatches.sort((a, b) => {
+      if (b.onlineMembers !== a.onlineMembers) {
+        return b.onlineMembers - a.onlineMembers;
+      }
+      return b.matchRate - a.matchRate;
+      });
+      const bestMatch = possibleGroupMatches[0];
+      
+      matchedUserIds.push(waiter);
+      await bot.db.addUserToGroup(bestMatch.id,waiter)
+      await addToDiscordGroup(bot, bestMatch.id, waiter, bestMatch.matchRate * 100);
+      await bot.db.removeFromWaitingPool(waiter);
+      bestMatch.members.push(waiter)
+      existingGroups.push({
+        id: bestMatch.id,
+        members: bestMatch.members,
+        isFull: bestMatch.members.length>=10
+      });
+      console.log(`Best group match for ${waiter}:`, bestMatch);
     }
 
     //match with other waiters if none found in existing groups

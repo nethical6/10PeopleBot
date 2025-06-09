@@ -5,34 +5,7 @@ import {
     ButtonStyle, 
     Message} from 'discord.js';
 import { Bot } from '../bot';
-
-export const INTEREST_OPTIONS = [
-    { label: 'Anime & Fandom Culture', value: 'anime' },
-    { label: 'Fitness & Wellness', value: 'fitness' },
-    { label: 'Books & Literature', value: 'books' },
-    { label: 'Music & Audio', value: 'music' },
-    { label: 'Gaming & Esports', value: 'gaming' },
-    { label: 'Tech & Gadgets', value: 'tech' },
-    { label: 'Movies & TV Shows', value: 'movies' },
-    { label: 'Sports & Outdoor Activities', value: 'sports' },
-    { label: 'Art & Design', value: 'art' },
-    { label: 'Memes & Internet Culture', value: 'memes' },
-    { label: 'Philosophy & Deep Talks', value: 'philosophy' },
-    { label: 'Cooking & Food', value: 'cooking' },
-    { label: 'Travel & Adventure', value: 'travel' },
-    { label: 'Science & Nature', value: 'science' },
-    { label: 'History & Culture', value: 'history' },
-    { label: 'Languages & Linguistics', value: 'languages' },
-    { label: 'LGBTQIA+ Topics', value: 'lgbtqia' },
-    { label: 'Parenting & Family', value: 'parenting' },
-    { label: 'Pets & Animals', value: 'pets' },
-    { label: 'Fashion & Beauty', value: 'fashion' },
-    { label: 'Mental Health & Self-Care', value: 'mental_health' },
-    { label: 'Politics & Current Events', value: 'politics' },
-    { label: 'Crafts & DIY', value: 'crafts' },
-    { label: 'Business & Entrepreneurship', value: 'business' },
-    { label: 'Disability & Accessibility', value: 'disability' }
-];
+import { INTEREST_OPTIONS } from '../constants';
 
 export const MessageCreateHandler = async (message: Message, bot: Bot) => {
     if(message.content.startsWith('!start')) {
@@ -54,10 +27,14 @@ export const MessageCreateHandler = async (message: Message, bot: Bot) => {
         const row1 = new ActionRowBuilder().addComponents(selectMenu);
         const row2 = new ActionRowBuilder().addComponents(confirmButton);
 
-        await message.reply({
-            content: '👋 Pick your interests and hit confirm to find a group:',
+        // fetch the channel
+        const channel = await bot.client.channels.fetch(message.channelId);
+        if(channel?.isTextBased() && channel.isSendable()) {
+            await channel.send({
+            content: '👋 Pick your interests and hit confirm to find a group:\n',
             components: [row1.toJSON(), row2.toJSON()]
         });
+        }
     }
     
 };
