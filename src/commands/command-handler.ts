@@ -1,5 +1,5 @@
 import { Collection } from 'discord.js';
-import { Command } from './types';
+import { Command } from '../types/command';
 import { voteKickCommand } from './votekick';
 import { kickMeComamnd } from './kickme';
 
