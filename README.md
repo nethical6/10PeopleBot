@@ -2,7 +2,10 @@
 
 # 10People Discord Bot
 
-A Discord bot that helps create meaningful connections in large Discord servers by automatically matching people based on their interests. Say goodbye to overwhelming message feeds and hello to deeper, more focused conversations with like-minded people.
+  [![GitHub contributors](https://img.shields.io/github/contributors/nethical6/10peoplebot)](https://github.com/nethical6/10peoplebot/graphs/contributors)
+  [![Discord Server](https://img.shields.io/badge/Discord%20Server-white?style=flat&logo=discord)](https://discord.gg/yYqSHFcs2P)
+  
+A Discord bot that helps create meaningful connections in large Discord servers by automatically matching people based on their interests. Say goodbye to overwhelming message feeds and hello to deeper, more focused conversations with like-minded people. [Join the Discord server now to test it out!](https://discord.gg/yYqSHFcs2P)
 
 ## Features
 
