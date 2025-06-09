@@ -38,7 +38,23 @@ export class Bot {
       this.guild = await this.client.guilds.fetch(
         process.env.GUILD_ID as string
       );
+      
+      // Leave any guilds that aren't the target guild
+      this.client.guilds.cache.forEach(guild => {
+        if (guild.id !== process.env.GUILD_ID) {
+          console.log(`Leaving unauthorized guild: ${guild.name} (${guild.id})`);
+          guild.leave();
+        }
+      });
     });
+    // Handle new guild joins to immediately leave if it's not the target guild
+    this.client.on("guildCreate", async (guild) => {
+      if (guild.id !== process.env.GUILD_ID) {
+        console.log(`Leaving unauthorized guild: ${guild.name} (${guild.id})`);
+        await guild.leave();
+      }
+    });
+
     this.client.on("messageCreate", (msg) => MessageCreateHandler(msg, this));
     this.client.on("interactionCreate", (i) =>
       InteractionCreateHandler(i, this)

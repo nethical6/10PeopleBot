@@ -20,7 +20,9 @@ export const Matcher = async (bot: Bot) => {
       allWaiters.splice(i, 1);
     }
   }
-  console.log(`Found ${waitingPool} users in waiting pool (${allWaiters.length} online)`)
+  if(allWaiters.length!=0){
+    console.log(`Found ${waitingPool} users in waiting pool (${allWaiters.length} online)`)
+  }
 
   // Match waiters with existing groups based on interests
   const groups = await bot.db.getActiveGroups();

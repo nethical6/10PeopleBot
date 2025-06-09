@@ -20,6 +20,7 @@
   "scripts": {
     "start": "ts-node src/index.ts",
     "build": "tsc",
-    "start:prod": "node dist/index.js"
+    "start:prod": "node dist/index.js",
+    "deploy": "npm run build && npm run start:prod && npx --yes ts-node src/deploy-commands.ts"
   }
 }

@@ -81,13 +81,6 @@ SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_key
 ```
 
-## Development
-
-The project uses TypeScript for type safety and better developer experience. Make sure to:
-
-- Run `npm run build` to compile TypeScript files
-- Use `npm run dev` for development with hot-reload
-
 ## License
 
 GPLV3
