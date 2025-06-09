@@ -1,12 +1,10 @@
 import { Client, GatewayIntentBits, Guild, Partials } from "discord.js";
-import dotenv from "dotenv";
 import { MessageCreateHandler } from "./events/message";
 import { InteractionCreateHandler } from "./events/interaction";
 import { DatabaseService } from "./services/database-service";
 import { BackgroundService } from "./services/background-service";
 import { GuildMemberLeaveHandler } from "./events/member-leave";
 import { GuildMemberJoinHandler } from "./events/member-join";
-dotenv.config();
 
 export class Bot {
   public client: Client;
